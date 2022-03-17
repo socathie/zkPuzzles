@@ -7,20 +7,20 @@ describe("Verifier Contract", function () {
     let verifier;
 
     beforeEach(async function () {
-        Verifier = await ethers.getContractFactory("Verifier");
+        Verifier = await ethers.getContractFactory("PlonkVerifier");
         verifier = await Verifier.deploy();
         await verifier.deployed();
     });
 
     it("Should return true for correct proofs", async function () {
-        var array = JSON.parse("[" + fs.readFileSync("./circuits/build/sudoku/call.json") + "]");
-        expect(await verifier.verifyProof(array[0], array[1], array[2], array[3])).to.be.true;
+        var text = fs.readFileSync("./circuits/build/sudoku/call.txt", 'utf-8');
+        var calldata = text.split(',');
+        //console.log(calldata);
+        expect(await verifier.verifyProof(calldata[0], JSON.parse(calldata[1]))).to.be.true;
     });
     it("Should return false for invalid proof", async function () {
-        let a = [0, 0];
-        let b = [[0, 0], [0, 0]];
-        let c = [0, 0];
-        let d = [0];
-        expect(await verifier.verifyProof(a, b, c, d)).to.be.false;
+        let a = '0x00';
+        let b = ['0'];
+        expect(await verifier.verifyProof(a, b)).to.be.false;
     });
 });
