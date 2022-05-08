@@ -15,8 +15,6 @@ describe("Sudoku circuit test", function () {
   it("Should fail for invalid solution", async () => {
     const circuit = await wasm_tester("circuits/sudoku.circom");
     await circuit.loadConstraints();
-    assert.equal(circuit.nVars, 4372);
-    assert.equal(circuit.constraints.length, 4332);
 
     const INPUT = {
       "puzzle": [
@@ -50,14 +48,12 @@ describe("Sudoku circuit test", function () {
 
     //console.log(errorString);
 
-    assert(errorString=="Error: Error: Assert Failed. Error in template sudoku_79 line: 91");
+    assert(errorString.includes("Error: Error: Assert Failed"));
   });
 
   it("Should compute correct solution", async () => {
     const circuit = await wasm_tester("circuits/sudoku.circom");
     await circuit.loadConstraints();
-    assert.equal(circuit.nVars, 4372);
-    assert.equal(circuit.constraints.length, 4332);
 
     const INPUT = {
       "puzzle": [
@@ -89,6 +85,6 @@ describe("Sudoku circuit test", function () {
     //console.log(witness);
 
     assert(Fr.eq(Fr.e(witness[0]),Fr.e(1)));
-    assert(Fr.eq(Fr.e(witness[1]),Fr.e('14859242797732307376594647282705218440328040987055989295014298721628438034438')));
+    assert(Fr.eq(Fr.e(witness[1]),Fr.e("21037804764734705844575731710336356486693985845384893726248623536868999721687")));
   });
 });

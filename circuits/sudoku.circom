@@ -1,10 +1,6 @@
 pragma circom 2.0.3;
 
-include "../node_modules/circomlib-matrix/circuits/matAdd.circom";
-include "../node_modules/circomlib-matrix/circuits/matElemMul.circom";
-include "../node_modules/circomlib-matrix/circuits/matElemSum.circom";
-include "../node_modules/circomlib-matrix/circuits/matElemPow.circom";
-include "../node_modules/circomlib/circuits/poseidon.circom";
+include "./util.circom";
 
 template sudoku() {
     signal input puzzle[9][9]; // 0  where blank
@@ -17,10 +13,11 @@ template sudoku() {
     
     for (var i=0; i<9; i++) {
         for (var j=0; j<9; j++) {
-            assert(puzzle[i][j]>=0);
-            assert(puzzle[i][j]<=9);
-            assert(solution[i][j]>=0);
-            assert(solution[i][j]<=9);
+
+            //assert(puzzle[i][j]>=0);
+            //assert(puzzle[i][j]<=9);
+            //assert(solution[i][j]>=0);
+            //assert(solution[i][j]<=9);
             mul.a[i][j] <== puzzle[i][j];
             mul.b[i][j] <== solution[i][j];
         }
@@ -44,13 +41,25 @@ template sudoku() {
 
     component square = matElemPow(9,9,2);
 
+    // check the full solution only has 1 to 9
+    component rangeProof[9][9];
+
     for (var i=0; i<9; i++) {
         for (var j=0; j<9; j++) {
             square.a[i][j] <== add.out[i][j];
+
+            rangeProof[i][j] = RangeProof(4);
+
+            rangeProof[i][j].range[0] <== 1;
+            rangeProof[i][j].range[1] <== 9;
+
+            rangeProof[i][j].in <== add.out[i][j];
+
+            rangeProof[i][j].out === 1;
         }
     }
 
-    // check all rows and columns and blocks sum to 45 and sum of sqaures = 285
+    // check all rows and columns and blocks sum to 45 and sum of sqaures = 285 and product = 9! = 362880
 
     component row[9];
     component col[9];
@@ -58,6 +67,9 @@ template sudoku() {
     component rowSq[9];
     component colSq[9];
     component blockSq[9];
+    component rowProd[9];
+    component colProd[9];
+    component blockProd[9];
 
 
     for (var k=0; k<9; k++) {
@@ -69,19 +81,29 @@ template sudoku() {
         colSq[k] = matElemSum(1,9);
         blockSq[k] = matElemSum(3,3);
 
+        rowProd[k] = Multiplier9();
+        colProd[k] = Multiplier9();
+        blockProd[k] = Multiplier9();
+
         for (var i=0; i<9; i++) {
             row[k].a[0][i] <== add.out[k][i];
             col[k].a[0][i] <== add.out[i][k];
 
             rowSq[k].a[0][i] <== square.out[k][i];
             colSq[k].a[0][i] <== square.out[i][k];
+
+            rowProd[k].in[i] <== add.out[k][i];
+            colProd[k].in[i] <== add.out[i][k];
         }
         var x = 3*(k%3);
         var y = 3*(k\3);
+        var idx = 0;
         for (var i=0; i<3; i++) {
             for (var j=0; j<3; j++) {
                 block[k].a[i][j] <== add.out[x+i][y+j];
                 blockSq[k].a[i][j] <== square.out[x+i][y+j];
+                blockProd[k].in[idx] <== add.out[x+i][y+j];
+                idx++;
             }
         }
         row[k].out === 45;
@@ -91,24 +113,24 @@ template sudoku() {
         rowSq[k].out === 285;
         colSq[k].out === 285;
         blockSq[k].out === 285;
+
+        rowProd[k].out === 362880;
+        colProd[k].out === 362880;
+        blockProd[k].out === 362880;
     }
 
     // hash the original puzzle and emit so that the dapp can listen for puzzle solved events
-
+    
     component poseidon[9];
-    component hash;
-
-    hash = Poseidon(9);
     
     for (var i=0; i<9; i++) {
         poseidon[i] = Poseidon(9);
         for (var j=0; j<9; j++) {
             poseidon[i].inputs[j] <== puzzle[i][j];
         }
-        hash.inputs[i] <== poseidon[i].out;
     }
 
-    out <== hash.out;
+    out <== poseidon[0].out + poseidon[1].out + poseidon[2].out + poseidon[3].out + poseidon[4].out + poseidon[5].out + poseidon[6].out + poseidon[7].out + poseidon[8].out;
 }
 
 component main = sudoku();
